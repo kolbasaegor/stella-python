@@ -1,5 +1,5 @@
 language core;
-extend with #unit-type, #pairs;
+extend with #pairs;
 
 fn add(t : {Nat, Nat}) -> Nat {
   return t.1

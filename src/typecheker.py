@@ -1,18 +1,29 @@
 from stella.stellaParser import stellaParser
-from stypes import Bool, Nat, Fun, compare_types
+from stypes import Bool, Nat, Fun, Unit, Tuple, compare_types
 
 
 TYPE_BOOL = Bool()
 TYPE_NAT = Nat()
+TYPE_UNIT = Unit()
 
 
 class Typecheker():
 
     def __init__(self):
-        self.global_functions: dict[str, Bool|Nat|Fun] = dict()
+        self.global_functions = dict()
 
 
     def handle_type(self, ctx):
+        '''
+        evaluates type of parameter
+        returns type of parameter
+        '''
+        if isinstance(ctx, stellaParser.TypeTupleContext):
+            return Tuple([self.handle_type(term) for term in ctx.types])
+
+        if isinstance(ctx, stellaParser.TypeUnitContext):
+            return TYPE_UNIT
+
         if isinstance(ctx, stellaParser.TypeBoolContext):
             return TYPE_BOOL
         
@@ -51,7 +62,7 @@ class Typecheker():
         if expected return type != actual return type raises RuntimeError 
         '''
         if isinstance(ctx, stellaParser.DeclFunContext):
-            local: dict[str, Bool|Nat|Fun] = dict()
+            local = dict()
             func_name = ctx.name.text
             param_name = ctx.paramDecls[0].name.text
             param_type = self.handle_type(ctx.paramDecls[0].paramType)
@@ -70,15 +81,15 @@ class Typecheker():
                 raise RuntimeError(f'Ill-typed function {func_name}: expected return type: {expected_return_type}, actual: {actual_return_type}')
 
         elif isinstance(ctx, stellaParser.DeclTypeAliasContext):
-            raise RuntimeError("unsupported syntax")
+            raise RuntimeError("Unsupported syntax")
         
         else:
-            raise RuntimeError("unsupported syntax")
+            raise RuntimeError("Unsupported syntax")
         
 
     def handle_expr_context(self,
                             ctx: stellaParser.ExprContext,
-                            local: dict[str, Bool|Nat|Fun]):
+                            local):
         '''
         evaluates expression type
         
@@ -92,11 +103,26 @@ class Typecheker():
         if isinstance(ctx, stellaParser.ConstTrueContext):
             return TYPE_BOOL
 
-        elif isinstance(ctx, stellaParser.ConstFalseContext):
+        if isinstance(ctx, stellaParser.ConstFalseContext):
             return TYPE_BOOL
         
-        elif isinstance(ctx, stellaParser.ConstIntContext):
+        if isinstance(ctx, stellaParser.ConstIntContext):
             return TYPE_NAT
+        
+        if isinstance(ctx, stellaParser.ConstUnitContext):
+            return TYPE_UNIT
+
+        if isinstance(ctx, stellaParser.TupleContext):
+            return Tuple([self.handle_expr_context(expr, local) for expr in ctx.exprs])
+
+        if isinstance(ctx, stellaParser.DotTupleContext):
+            tuple_instance = self.handle_expr_context(ctx.expr_, local)
+            index = int(ctx.index.text)
+
+            if not isinstance(tuple_instance, Tuple):
+                raise RuntimeError(f'Index applied to a non-tuple: {tuple_instance}')
+            
+            return tuple_instance[index]
 
         if isinstance(ctx, stellaParser.VarContext):
             var_name = ctx.name.text 
@@ -166,5 +192,5 @@ class Typecheker():
         if isinstance(ctx, stellaParser.ParenthesisedExprContext):
             return self.handle_expr_context(ctx.expr_, local)
 
-        raise RuntimeError(f'unsupported syntax: {ctx.getText()}')
+        raise RuntimeError(f'Unsupported syntax: {ctx.getText()}')
         
