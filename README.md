@@ -1,41 +1,27 @@
 # Stella typecheker on Python
+python>=3.10
 
 ## Usage
 how to run?
 
-`make test-well-typed`
-
-`make test-ill-typed`
+`make mytest`
 
 or 
 
-`python src/interpret.py [test_name].stella`
+`python src/interpret.py [test_name]`
 
 for example:
 
-`python src/interpret.py tests/well-typed/factorial.stella`
+`python src/interpret.py tests/core/well-typed/factorial.stella`
 
 output:
 ```
-Function declaration: Nat2Nat::const
-- Actual return type: (fn(Nat)->(fn(Nat)->Nat))
-- Expected return type: (fn(Nat)->(fn(Nat)->Nat))
-
-Function declaration: Nat::add
-- Actual return type: (fn(Nat)->Nat)
-- Expected return type: (fn(Nat)->Nat)
-
-Function declaration: Nat::mul
-- Actual return type: (fn(Nat)->Nat)
-- Expected return type: (fn(Nat)->Nat)
-
-Function declaration: factorial
-- Actual return type: Nat
-- Expected return type: Nat
-
-Function declaration: main
-- Actual return type: Nat
-- Expected return type: Nat
-
 exit code: 0
+```
+
+`python .\src\interpret.py .\tests\core\ill-typed\bad-squares-1.stella`
+
+output:
+```
+RuntimeError: Ill-typed function Nat::add: expected return type: <stypes.Nat object at 0x000001CBD4702390>, actual: <stypes.Fun object at 0x000001CBD4740910>
 ```

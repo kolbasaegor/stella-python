@@ -1,22 +1,40 @@
 from stella.stellaParser import stellaParser
+from stypes import Bool, Nat, Fun, compare_types
+
+
+TYPE_BOOL = Bool()
+TYPE_NAT = Nat()
 
 
 class Typecheker():
 
     def __init__(self):
-        self.fun_decls = {}
+        self.global_functions: dict[str, Bool|Nat|Fun] = dict()
 
 
-    def compare_types(self, expected: str, actual: str):
-        '''
-        compares two types represented as a string
-        '''
-        return expected.replace(' ', '') == actual.replace(' ', '')
+    def handle_type(self, ctx):
+        if isinstance(ctx, stellaParser.TypeBoolContext):
+            return TYPE_BOOL
+        
+        if isinstance(ctx, stellaParser.TypeNatContext):
+            return TYPE_NAT
+        
+        if isinstance(ctx, stellaParser.TypeFunContext):
+            return Fun(
+                param_type=self.handle_type(ctx.paramTypes[0]),
+                return_type=self.handle_type(ctx.returnType)
+            )
+        
+        if isinstance(ctx, stellaParser.TypeParensContext):
+            return self.handle_type(ctx.type_)
+        
+        raise RuntimeError(f'Unknown type: {type(ctx)}')
+        
             
-
     def handle_program_context(self, ctx: stellaParser.ProgramContext):
         '''
         goes through all function declarations
+        returns 0 if all function decls well typed
         '''
         for decl in ctx.decls:
             self.handle_decl_context(decl)
@@ -27,37 +45,29 @@ class Typecheker():
     def handle_decl_context(self, ctx: stellaParser.DeclContext):
         '''
         typechecks function definition;
-        creates a dictionary for local variables inside a function;
-        adds a function to the global scope;
+        creates dictionary for local variables/functions inside function;
+        adds function to the global scope;
 
         if expected return type != actual return type raises RuntimeError 
         '''
         if isinstance(ctx, stellaParser.DeclFunContext):
-            param_type = ctx.paramDecls[0].paramType.getText()
-            return_type = ctx.returnType.getText()
+            local: dict[str, Bool|Nat|Fun] = dict()
+            func_name = ctx.name.text
+            param_name = ctx.paramDecls[0].name.text
+            param_type = self.handle_type(ctx.paramDecls[0].paramType)
+            expected_return_type = self.handle_type(ctx.returnType)
+            actual_return_type = None
 
-            local_variables = {
-                f'{ctx.paramDecls[0].name.text}': {
-                    'type': ctx.paramDecls[0].paramType.getText()
-                }
-            }
+            self.global_functions[func_name] = Fun(param_type, expected_return_type)
+            local[param_name] = param_type
+        
+            if isinstance(ctx.returnExpr, stellaParser.SequenceContext):
+                raise RuntimeError('Do not use ; after the return. Sequencing has not yet been added to this version of typechecker')
+            else:
+                actual_return_type = self.handle_expr_context(ctx.returnExpr, local)
 
-            self.fun_decls[ctx.name.text] = {
-                'param_type': param_type,
-                'return_type': return_type
-            }
-
-            return_expr_type = self.handle_expr_context(ctx.returnExpr.expr1,
-                                                        local_variables=local_variables)
-            
-            print(f'Function declaration: {ctx.name.text}')
-            print(f'- Actual return type: {return_expr_type}')
-            print(f'- Expected return type: {return_type}', end='\n\n')
-
-            if not self.compare_types(return_type, return_expr_type):
-                raise RuntimeError(f'Type mismatch in function declaration "{ctx.name.text}": \
-                                    expected return type: "{return_type}", \
-                                    actual return type: "{return_expr_type}"')
+            if not compare_types(expected_return_type, actual_return_type):
+                raise RuntimeError(f'Ill-typed function {func_name}: expected return type: {expected_return_type}, actual: {actual_return_type}')
 
         elif isinstance(ctx, stellaParser.DeclTypeAliasContext):
             raise RuntimeError("unsupported syntax")
@@ -68,7 +78,7 @@ class Typecheker():
 
     def handle_expr_context(self,
                             ctx: stellaParser.ExprContext,
-                            local_variables: dict[str, dict[str, str]]):
+                            local: dict[str, Bool|Nat|Fun]):
         '''
         evaluates expression type
         
@@ -80,82 +90,81 @@ class Typecheker():
         otherwise returns RuntimeError
         '''
         if isinstance(ctx, stellaParser.ConstTrueContext):
-            return 'Bool'
+            return TYPE_BOOL
 
         elif isinstance(ctx, stellaParser.ConstFalseContext):
-            return 'Bool'
-        
-        elif isinstance(ctx, stellaParser.VarContext):
-            if ctx.name.text not in local_variables:
-                raise RuntimeError(f'Unknown variable "{ctx.name.text}"')
-            
-            return local_variables[ctx.name.text]['type']
-
-        elif isinstance(ctx, stellaParser.IfContext):
-            condition_type = self.handle_expr_context(ctx.condition, local_variables)
-            if not self.compare_types('Bool', condition_type):
-                raise RuntimeError(f'Ill-typed if statement: expected condition type: \
-                                   "Bool", acttual condition type: "{condition_type}"')
-
-            thenExpr_type = self.handle_expr_context(ctx.thenExpr, local_variables)
-            elseExpr_type = self.handle_expr_context(ctx.elseExpr, local_variables)
-
-            if thenExpr_type != elseExpr_type:
-                raise RuntimeError(f'Ill-typed if statement: \
-                                   thenExprType({thenExpr_type}) != elseExprType({elseExpr_type})')
-            
-            return thenExpr_type
+            return TYPE_BOOL
         
         elif isinstance(ctx, stellaParser.ConstIntContext):
-            return 'Nat'
-        
-        elif isinstance(ctx, stellaParser.SuccContext):
-            param_type = self.handle_expr_context(ctx.n, local_variables)
-            if not self.compare_types('Nat', param_type):
-                raise RuntimeError(f'Ill-typed succ: expected param type: \
-                                   "Nat", actual param type: "{param_type}"')
+            return TYPE_NAT
 
-            return 'Nat'
-        
-        elif isinstance(ctx, stellaParser.ApplicationContext):
-            if isinstance(ctx.fun, stellaParser.ApplicationContext):
-                return self.handle_expr_context(ctx.args[0], local_variables)
+        if isinstance(ctx, stellaParser.VarContext):
+            var_name = ctx.name.text 
 
-            fun_name = ctx.fun.name.text
-            actual_param_type = self.handle_expr_context(ctx._expr, local_variables)
-
-            expected_param_type = self.fun_decls[fun_name]['param_type']
-
-            if not self.compare_types(expected_param_type, actual_param_type):
-                raise RuntimeError(f'Type mismatch in function application "{fun_name}": \
-                                   expected param type: "{expected_param_type}", actual param type: "{actual_param_type}"')
-
-            return self.fun_decls[fun_name]['return_type']
-        
-        elif isinstance(ctx, stellaParser.AbstractionContext):
-            local_variables[ctx._paramDecl.name.text] = {
-                'type': ctx._paramDecl.paramType.getText()
-            }
-            return_expr_type = self.handle_expr_context(ctx.returnExpr.expr1, local_variables)
-
-            return f'(fn({ctx._paramDecl.paramType.getText()})->{return_expr_type})'
-
-        elif isinstance(ctx, stellaParser.NatRecContext):
-            n_type = self.handle_expr_context(ctx.n, local_variables)
-            if not self.compare_types('Nat', n_type):
-                raise RuntimeError(f'Ill-typed Nat::rec: "n" should have type "Nat", \
-                                   actual type: {n_type}')
+            if var_name in local:
+                return local[var_name]
             
-            initial_type = self.handle_expr_context(ctx.initial, local_variables)
-            step_type = self.handle_expr_context(ctx.step, local_variables)
+            elif var_name in self.global_functions:
+                return self.global_functions[var_name]
+            
+            raise RuntimeError(f'Unknown variable/function "{ctx.name.text}"')
 
-            if not self.compare_types(f'(fn(Nat)->(fn({initial_type})->{initial_type}))', step_type):
-                raise RuntimeError(f'Ill-typed Nat::rec,\nz have type {initial_type};\
-                                   \ns has to be of type (fn(Nat)->(fn({initial_type})->{initial_type}))\
-                                   \nactual type of s: {step_type}')
+        if isinstance(ctx, stellaParser.IfContext):
+            condition_type = self.handle_expr_context(ctx.condition, local)
+            if not compare_types(TYPE_BOOL, condition_type):
+                raise RuntimeError(f'Ill-typed if statement: expected condition type: <Bool>, acttual condition type: {condition_type}')
 
-            return 'Nat'
+            then_expr_type = self.handle_expr_context(ctx.thenExpr, local)
+            else_expr_type = self.handle_expr_context(ctx.elseExpr, local)
+
+            if not compare_types(then_expr_type, else_expr_type):
+                raise RuntimeError(f'Ill-typed if statement: thenExprType({then_expr_type}) != elseExprType({else_expr_type})')
+            
+            return then_expr_type
         
-        else:
-            raise RuntimeError("unsupported syntax")
+        if isinstance(ctx, stellaParser.SuccContext):
+            param_type = self.handle_expr_context(ctx.n, local)
+            if not compare_types(TYPE_NAT, param_type):
+                raise RuntimeError(f'Ill-typed succ: expected param type: <Nat>, actual param type: {param_type}')
+
+            return TYPE_NAT
+                    
+        if isinstance(ctx, stellaParser.AbstractionContext):
+            param_type = self.handle_type(ctx.paramDecls[0].paramType)
+            local[ctx.paramDecls[0].name.text] = param_type
+
+            return Fun(
+                param_type=param_type,
+                return_type=self.handle_expr_context(ctx.returnExpr, local)
+            )
+
+        if isinstance(ctx, stellaParser.NatRecContext):
+            n_type = self.handle_expr_context(ctx.n, local)
+            if not compare_types(TYPE_NAT, n_type):
+                raise RuntimeError(f'Ill-typed Nat::rec: n should have type <Nat>, actual type: {n_type}')
+            
+            initial_type = self.handle_expr_context(ctx.initial, local)
+            step_type = self.handle_expr_context(ctx.step, local)
+
+            if not compare_types(Fun(TYPE_NAT, Fun(initial_type, initial_type)), step_type):
+                raise RuntimeError(f'Ill-typed Nat::rec,\nz have type {initial_type};\ns has to be of type (fn(Nat)->(fn({initial_type})->{initial_type}))\nactual type of s: {step_type}')
+
+            return initial_type
+        
+        if isinstance(ctx, stellaParser.ApplicationContext):
+            param_type = self.handle_expr_context(ctx.args[0], local)
+            func = self.handle_expr_context(ctx.fun, local)
+
+            if not isinstance(func, Fun):
+                raise RuntimeError(f'Applying non function')
+            
+            if not compare_types(func.param_type, param_type):
+                raise RuntimeError(f'Ill-typed application of function {ctx.fun.getText()}: expected param type: {func.param_type}, actual: {param_type}')
+            
+            return func.return_type
+        
+        if isinstance(ctx, stellaParser.ParenthesisedExprContext):
+            return self.handle_expr_context(ctx.expr_, local)
+
+        raise RuntimeError(f'unsupported syntax: {ctx.getText()}')
         
