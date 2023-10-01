@@ -156,18 +156,19 @@ class Typecheker():
             local['inl_pattern'] = match_type.left
             local['inr_pattern'] = match_type.right
 
-            for case in ctx.cases:
-                self.handle_expr_context(case, local)
+            case1_type = self.handle_expr_context(ctx.cases[0], local)
+            case2_type = self.handle_expr_context(ctx.cases[1], local)
 
-            return TYPE_ANY 
+            if not compare_types(case1_type, case2_type):
+                raise RuntimeError(f'Ill-typed mactch: type of case 1 ({case1_type}) != type of case 2 ({case2_type})')
+
+            return case1_type 
 
         if isinstance(ctx, stellaParser.MatchCaseContext):
             pname, ptype = self.handle_expr_context(ctx.pattern_, local)
             local[pname] = ptype
 
-            self.handle_expr_context(ctx.expr_, local)
-
-            return 
+            return self.handle_expr_context(ctx.expr_, local)
 
         if isinstance(ctx, stellaParser.PatternInlContext):
             pattern_type = local['inl_pattern']

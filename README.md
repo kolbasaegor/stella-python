@@ -11,7 +11,7 @@ antlr4-python3-runtime==4.9.2
 
 ### how to run?
 
-`make mytest`
+`make test`
 
 or 
 

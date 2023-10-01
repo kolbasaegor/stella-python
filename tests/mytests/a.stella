@@ -7,7 +7,7 @@ fn test(first : Bool) -> Nat + Unit {
 
 fn main(input : Bool) -> Nat {
   return match test(input){
-      inl(n) => n
-    | inr(_) => 0
+      inl(n) => if input then n else succ(n)
+    | inr(_) => {_, _, succ(0)}.3
   }
 }
