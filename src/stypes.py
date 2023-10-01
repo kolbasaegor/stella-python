@@ -25,7 +25,17 @@ class Nat():
 
     def __str__(self):
         return 'Nat'
+    
 
+class Any():
+
+    def __init__(self):
+        pass
+
+
+    def __str__(self):
+        return 'Any'
+    
 
 class Tuple():
 
@@ -43,6 +53,16 @@ class Tuple():
     def __str__(self):
         return '{' + ','.join([str(term) for term in self.terms]) + '}'
 
+class Sum():
+
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+
+    def __str__(self):
+        return f'({str(self.left)}+{str(self.right)})'
+
 
 class Fun():
 
@@ -56,6 +76,13 @@ class Fun():
 
 
 def compare_types(expected, actual):
+    '''
+    compares two types
+    if expected == actual return true
+    '''
+    if isinstance(expected, Any) or isinstance(actual, Any):
+        return True
+
     if type(expected) != type(actual):
         return False
 
@@ -67,4 +94,12 @@ def compare_types(expected, actual):
                 compare_types(expected.return_type, actual.return_type))
     
     if isinstance(expected, Tuple):
-        return expected.terms == actual.terms
+        for term_expected, term_actual in zip(expected.terms, actual.terms):
+            if not compare_types(term_expected, term_actual):
+                return False
+            
+        return True
+    
+    if isinstance(expected, Sum):
+        return (compare_types(expected.left, actual.left) and 
+                compare_types(expected.right, actual.right))

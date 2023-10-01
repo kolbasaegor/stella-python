@@ -1,10 +1,11 @@
 from stella.stellaParser import stellaParser
-from stypes import Bool, Nat, Fun, Unit, Tuple, compare_types
+from stypes import *
 
 
 TYPE_BOOL = Bool()
 TYPE_NAT = Nat()
 TYPE_UNIT = Unit()
+TYPE_ANY = Any()
 
 
 class Typecheker():
@@ -13,14 +14,28 @@ class Typecheker():
         self.global_functions = dict()
 
 
+    def type_of_match(self, ctx: stellaParser.MatchContext, local):
+        '''
+        evaluates type of t0 in match t0 {...}
+        returns type of t0
+        '''
+        s = ctx.getText()
+        var = s[:s.find('(')][:s.find('{')].replace('match', '')
+
+        if var in self.global_functions:
+            return self.global_functions[var].return_type
+
+        if var in local:
+            return local[var]
+        
+        raise RuntimeError(f'Unknown variable/function "{var}"')
+
+
     def handle_type(self, ctx):
         '''
         evaluates type of parameter
         returns type of parameter
         '''
-        if isinstance(ctx, stellaParser.TypeTupleContext):
-            return Tuple([self.handle_type(term) for term in ctx.types])
-
         if isinstance(ctx, stellaParser.TypeUnitContext):
             return TYPE_UNIT
 
@@ -35,6 +50,15 @@ class Typecheker():
                 param_type=self.handle_type(ctx.paramTypes[0]),
                 return_type=self.handle_type(ctx.returnType)
             )
+        
+        if isinstance(ctx, stellaParser.TypeSumContext):
+            return Sum(
+                left=self.handle_type(ctx.left),
+                right=self.handle_type(ctx.right)
+            )
+
+        if isinstance(ctx, stellaParser.TypeTupleContext):
+            return Tuple([self.handle_type(term) for term in ctx.types])
         
         if isinstance(ctx, stellaParser.TypeParensContext):
             return self.handle_type(ctx.type_)
@@ -96,7 +120,10 @@ class Typecheker():
         supported expression types:
         ConstTrueContext, ConstFalseContext, VarContext,
         IfContext, ConstIntContext, SuccContext,
-        ApplicationContext, AbstractionContext, NatRecContext
+        ApplicationContext, AbstractionContext, NatRecContext,
+        ConstUnitContext, TupleContext, DotTupleContext,
+        InlContext, InrContext, MatchContext, MatchCaseContext,
+        PatternInlContext, PatternInrContext, PatternVarContext
 
         otherwise returns RuntimeError
         '''
@@ -111,6 +138,51 @@ class Typecheker():
         
         if isinstance(ctx, stellaParser.ConstUnitContext):
             return TYPE_UNIT
+
+        if isinstance(ctx, stellaParser.InlContext):
+            return Sum(
+                left=self.handle_expr_context(ctx.expr_, local),
+                right=TYPE_ANY
+            )
+        
+        if isinstance(ctx, stellaParser.InrContext):
+            return Sum(
+                left=TYPE_ANY,
+                right=self.handle_expr_context(ctx.expr_, local)
+            )
+
+        if isinstance(ctx, stellaParser.MatchContext):
+            match_type = self.type_of_match(ctx, local)
+            local['inl_pattern'] = match_type.left
+            local['inr_pattern'] = match_type.right
+
+            for case in ctx.cases:
+                self.handle_expr_context(case, local)
+
+            return TYPE_ANY 
+
+        if isinstance(ctx, stellaParser.MatchCaseContext):
+            pname, ptype = self.handle_expr_context(ctx.pattern_, local)
+            local[pname] = ptype
+
+            self.handle_expr_context(ctx.expr_, local)
+
+            return 
+
+        if isinstance(ctx, stellaParser.PatternInlContext):
+            pattern_type = local['inl_pattern']
+            pattern_name = self.handle_expr_context(ctx.pattern_, local)
+
+            return pattern_name, pattern_type
+        
+        if isinstance(ctx, stellaParser.PatternInrContext):
+            pattern_type = local['inr_pattern']
+            pattern_name = self.handle_expr_context(ctx.pattern_, local)
+
+            return pattern_name, pattern_type
+
+        if isinstance(ctx, stellaParser.PatternVarContext):
+            return ctx.name.text
 
         if isinstance(ctx, stellaParser.TupleContext):
             return Tuple([self.handle_expr_context(expr, local) for expr in ctx.exprs])
@@ -138,7 +210,7 @@ class Typecheker():
         if isinstance(ctx, stellaParser.IfContext):
             condition_type = self.handle_expr_context(ctx.condition, local)
             if not compare_types(TYPE_BOOL, condition_type):
-                raise RuntimeError(f'Ill-typed if statement: expected condition type: <Bool>, acttual condition type: {condition_type}')
+                raise RuntimeError(f'Ill-typed if statement: expected condition type: Bool, acttual condition type: {condition_type}')
 
             then_expr_type = self.handle_expr_context(ctx.thenExpr, local)
             else_expr_type = self.handle_expr_context(ctx.elseExpr, local)
@@ -151,7 +223,7 @@ class Typecheker():
         if isinstance(ctx, stellaParser.SuccContext):
             param_type = self.handle_expr_context(ctx.n, local)
             if not compare_types(TYPE_NAT, param_type):
-                raise RuntimeError(f'Ill-typed succ: expected param type: <Nat>, actual param type: {param_type}')
+                raise RuntimeError(f'Ill-typed succ: expected param type: Nat, actual param type: {param_type}')
 
             return TYPE_NAT
                     
@@ -167,7 +239,7 @@ class Typecheker():
         if isinstance(ctx, stellaParser.NatRecContext):
             n_type = self.handle_expr_context(ctx.n, local)
             if not compare_types(TYPE_NAT, n_type):
-                raise RuntimeError(f'Ill-typed Nat::rec: n should have type <Nat>, actual type: {n_type}')
+                raise RuntimeError(f'Ill-typed Nat::rec: n should have type Nat, actual type: {n_type}')
             
             initial_type = self.handle_expr_context(ctx.initial, local)
             step_type = self.handle_expr_context(ctx.step, local)
@@ -193,4 +265,4 @@ class Typecheker():
             return self.handle_expr_context(ctx.expr_, local)
 
         raise RuntimeError(f'Unsupported syntax: {ctx.getText()}')
-        
+    

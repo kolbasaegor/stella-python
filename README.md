@@ -1,8 +1,15 @@
 # Stella typecheker on Python
-python>=3.10
+python==3.11.5
+
+antlr4-python3-runtime==4.9.2
 
 ## Usage
-how to run?
+
+### how to build?
+
+`pip install -r requirements.txt`
+
+### how to run?
 
 `make mytest`
 
@@ -19,9 +26,9 @@ output:
 exit code: 0
 ```
 
-`python .\src\interpret.py .\tests\core\ill-typed\bad-squares-1.stella`
+`python .\src\interpret.py tests\core\ill-typed\argument-type-mismatch-3.stella`
 
 output:
 ```
-RuntimeError: Ill-typed function Nat::add: expected return type: <stypes.Nat object at 0x000001CBD4702390>, actual: <stypes.Fun object at 0x000001CBD4740910>
+RuntimeError: Ill-typed application of function k: expected param type: (fn(Nat)->(fn((fn(Nat)->Bool))->Nat)), actual: (fn(Nat)->(fn((fn(Nat)->Nat))->Nat))
 ```
