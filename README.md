@@ -1,5 +1,7 @@
 # Stella typecheker on Python
 
+[![tests](https://github.com/kolbasaegor/stella-python/actions/workflows/main.yaml/badge.svg)](https://github.com/kolbasaegor/stella-python/actions/workflows/main.yaml)
+
 python>=3.10
 
 antlr4-python3-runtime==4.9.2
