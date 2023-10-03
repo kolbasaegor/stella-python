@@ -22,6 +22,12 @@ class Any():
         return 'Any'
     
 
+class Panic(Any):
+
+    def __str__(self):
+        return 'Panic'
+    
+
 class Tuple():
 
     def __init__(self, terms):

@@ -1,0 +1,15 @@
+language core;
+
+extend with #let-bindings;
+
+
+fn merge(x : Nat) -> fn(Nat) -> {Nat, Nat} {
+  return fn(y : Nat) {
+    return {x, y}
+  }
+} 
+
+fn main(_ : Unit) -> {Nat, Nat} {
+  return let x = 0, y = 1 in
+         merge(x)(y)
+}

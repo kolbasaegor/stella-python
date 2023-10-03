@@ -7,11 +7,11 @@ extend with
 
 fn div(n : Nat) -> fn(Nat) -> Nat {
   return fn(m : Nat) {
-    return if m == 0 then panic! else n / m
-  };
+    return if true then panic! else n
+  }
 }
 
 fn main(n : Nat) -> Nat {
-  return div(n)(0);
+  return div(n)(0)
 }
 

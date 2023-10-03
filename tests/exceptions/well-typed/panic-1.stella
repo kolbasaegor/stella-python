@@ -11,5 +11,5 @@ fn main(n : Nat) -> Nat {
   return
     let n = 3 in
     let m = 4 in
-    if m == 0 then panic! else 1
+    if true then panic! else 1
 }

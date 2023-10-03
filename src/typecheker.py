@@ -6,6 +6,7 @@ TYPE_BOOL = Bool()
 TYPE_NAT = Nat()
 TYPE_UNIT = Unit()
 TYPE_ANY = Any()
+TYPE_PANIC = Panic()
 
 
 class Typecheker():
@@ -126,9 +127,6 @@ class Typecheker():
 
         otherwise returns RuntimeError
         '''
-        # print(type(ctx))
-        # TODO Let, Panic
-
         if isinstance(ctx, stellaParser.ConstTrueContext):
             return TYPE_BOOL
 
@@ -141,6 +139,22 @@ class Typecheker():
         if isinstance(ctx, stellaParser.ConstUnitContext):
             return TYPE_UNIT
         
+        if isinstance(ctx, stellaParser.PanicContext):
+            return TYPE_PANIC
+        
+        if isinstance(ctx, stellaParser.LetContext):
+            let_locals = [self.handle_expr_context(pattern, local) for pattern in ctx.patternBindings]
+            for ll in let_locals:
+                local = local | ll
+
+            return self.handle_expr_context(ctx.body, local)
+
+        if isinstance(ctx, stellaParser.PatternBindingContext):
+            if not isinstance(ctx.pat, stellaParser.PatternVarContext):
+                raise RuntimeError(f'{ctx.pat.getText()} is not variable')
+            
+            return { f'{ctx.pat.name.text}' : self.handle_expr_context(ctx.rhs, local) }
+
         if isinstance(ctx, stellaParser.SequenceContext):
             self.handle_expr_context(ctx.expr1, local)
 
