@@ -1,6 +1,5 @@
 # Stella typecheker on Python
-python==3.11.5
-
+python>=3.10
 antlr4-python3-runtime==4.9.2
 
 ## Usage

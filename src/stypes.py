@@ -1,17 +1,10 @@
 class Unit:
 
-    def __init__(self):
-        pass
-
-
     def __str__(self):
         return 'Unit'
 
 
 class Bool():
-
-    def __init__(self):
-        pass
 
     def __str__(self):
         return 'Bool'
@@ -19,19 +12,11 @@ class Bool():
 
 class Nat():
 
-    def __init__(self):
-        pass
-
-
     def __str__(self):
         return 'Nat'
     
 
 class Any():
-
-    def __init__(self):
-        pass
-
 
     def __str__(self):
         return 'Any'
@@ -52,6 +37,7 @@ class Tuple():
 
     def __str__(self):
         return '{' + ','.join([str(term) for term in self.terms]) + '}'
+
 
 class Sum():
 
@@ -75,6 +61,16 @@ class Fun():
         return f'(fn({str(self.param_type)})->{str(self.return_type)})'
 
 
+class Ref():
+
+    def __init__(self, type):
+        self.type = type
+
+    
+    def __str__(self):
+        return f'&({str(self.type)})'
+    
+
 def compare_types(expected, actual):
     '''
     compares two types
@@ -88,6 +84,9 @@ def compare_types(expected, actual):
 
     if isinstance(expected, Bool) or isinstance(expected, Nat) or isinstance(expected, Unit):
         return True
+    
+    if isinstance(expected, Ref):
+        return compare_types(expected.type, actual.type)
     
     if isinstance(expected, Fun):
         return (compare_types(expected.param_type, actual.param_type) and 

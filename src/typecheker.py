@@ -45,6 +45,9 @@ class Typecheker():
         if isinstance(ctx, stellaParser.TypeNatContext):
             return TYPE_NAT
         
+        if isinstance(ctx, stellaParser.TypeRefContext):
+            return Ref(self.handle_type(ctx.type_))
+        
         if isinstance(ctx, stellaParser.TypeFunContext):
             return Fun(
                 param_type=self.handle_type(ctx.paramTypes[0]),
@@ -96,11 +99,7 @@ class Typecheker():
             self.global_functions[func_name] = Fun(param_type, expected_return_type)
             local[param_name] = param_type
         
-            if isinstance(ctx.returnExpr, stellaParser.SequenceContext):
-                raise RuntimeError('Do not use ; after the return. Sequencing has not yet been added to this version of typechecker')
-            else:
-                actual_return_type = self.handle_expr_context(ctx.returnExpr, local)
-
+            actual_return_type = self.handle_expr_context(ctx.returnExpr, local)
             if not compare_types(expected_return_type, actual_return_type):
                 raise RuntimeError(f'Ill-typed function {func_name}: expected return type: {expected_return_type}, actual: {actual_return_type}')
 
@@ -127,6 +126,9 @@ class Typecheker():
 
         otherwise returns RuntimeError
         '''
+        # print(type(ctx))
+        # TODO Let, Panic
+
         if isinstance(ctx, stellaParser.ConstTrueContext):
             return TYPE_BOOL
 
@@ -137,6 +139,35 @@ class Typecheker():
             return TYPE_NAT
         
         if isinstance(ctx, stellaParser.ConstUnitContext):
+            return TYPE_UNIT
+        
+        if isinstance(ctx, stellaParser.SequenceContext):
+            self.handle_expr_context(ctx.expr1, local)
+
+            return self.handle_expr_context(ctx.expr2, local)
+        
+        if isinstance(ctx, stellaParser.RefContext):
+            expr_type = self.handle_expr_context(ctx.expr_, local)
+
+            return Ref(expr_type)
+
+        if isinstance(ctx, stellaParser.DerefContext):
+            ref = self.handle_expr_context(ctx.expr_, local)
+
+            if not isinstance(ref, Ref):
+                raise RuntimeError('Dereferncing non reference object')
+            
+            return ref.type
+
+        if isinstance(ctx, stellaParser.AssignContext):
+            ref = self.handle_expr_context(ctx.lhs, local)
+            if not isinstance(ref, Ref):
+                raise RuntimeError(f'Reference object has type {ref}, expected: &')
+
+            value_type = self.handle_expr_context(ctx.rhs, local)
+            if not compare_types(ref.type, value_type):
+                raise RuntimeError(f'Ill-typed assignment: reference object points to type {ref.type}, but assignment value has type {value_type}')
+
             return TYPE_UNIT
 
         if isinstance(ctx, stellaParser.InlContext):
