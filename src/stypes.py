@@ -30,11 +30,11 @@ class Panic(Any):
 
 class Tuple():
 
-    def __init__(self, terms):
+    def __init__(self, terms: list):
         self.terms = terms
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         if index - 1 >= len(self.terms):
             raise IndexError(f'Index outside the tuple: {index}')
 
@@ -43,6 +43,23 @@ class Tuple():
 
     def __str__(self):
         return '{' + ','.join([str(term) for term in self.terms]) + '}'
+
+
+class Record():
+
+    def __init__(self, dict_: dict):
+        self.dict_ = dict_
+
+
+    def __getitem__(self, key: str):
+        if key not in self.dict_:
+            raise KeyError(f'{key} not in record')
+
+        return self.dict_[key]
+    
+
+    def __str__(self):
+        return '{' + ','.join([f'{key}:{str(value)}' for key, value in self.dict_.items()]) + '}'
 
 
 class Sum():
@@ -93,6 +110,16 @@ def compare_types(expected, actual):
     
     if isinstance(expected, Ref):
         return compare_types(expected.type, actual.type)
+    
+    if isinstance(expected, Record):
+        for key, value in expected.dict_.items():
+            if key not in actual.dict_:
+                return False
+            
+            if not compare_types(value, actual.dict_[key]):
+                return False
+            
+        return True
     
     if isinstance(expected, Fun):
         return (compare_types(expected.param_type, actual.param_type) and 

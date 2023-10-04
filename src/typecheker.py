@@ -32,6 +32,14 @@ class Typecheker():
         raise RuntimeError(f'Unknown variable/function "{var}"')
 
 
+    def get_name_of_label(self, ctx):
+        if isinstance(ctx, stellaParser.RecordFieldTypeContext):
+            return ctx.getText().split(':')[0]
+
+        if isinstance(ctx, stellaParser.DotRecordContext):
+            return ctx.getText().split('.')[1]
+
+
     def handle_type(self, ctx):
         '''
         evaluates type of parameter
@@ -63,6 +71,14 @@ class Typecheker():
 
         if isinstance(ctx, stellaParser.TypeTupleContext):
             return Tuple([self.handle_type(term) for term in ctx.types])
+        
+        if isinstance(ctx, stellaParser.TypeRecordContext):
+            dict_ = dict()
+            for record_field in ctx.fieldTypes:
+                label = self.get_name_of_label(record_field)
+                dict_[label] = self.handle_type(record_field.type_)
+
+            return Record(dict_)
         
         if isinstance(ctx, stellaParser.TypeParensContext):
             return self.handle_type(ctx.type_)
@@ -116,16 +132,6 @@ class Typecheker():
                             local):
         '''
         evaluates expression type
-        
-        supported expression types:
-        ConstTrueContext, ConstFalseContext, VarContext,
-        IfContext, ConstIntContext, SuccContext,
-        ApplicationContext, AbstractionContext, NatRecContext,
-        ConstUnitContext, TupleContext, DotTupleContext,
-        InlContext, InrContext, MatchContext, MatchCaseContext,
-        PatternInlContext, PatternInrContext, PatternVarContext
-
-        otherwise returns RuntimeError
         '''
         if isinstance(ctx, stellaParser.ConstTrueContext):
             return TYPE_BOOL
@@ -142,6 +148,25 @@ class Typecheker():
         if isinstance(ctx, stellaParser.PanicContext):
             return TYPE_PANIC
         
+        if isinstance(ctx, stellaParser.RecordContext):
+            dict_ = dict()
+            for binding in ctx.bindings:
+                label, type_ = self.handle_expr_context(binding, local)
+                dict_[label] = type_
+
+            return Record(dict_)
+
+        if isinstance(ctx, stellaParser.BindingContext):
+            return ctx.name.text, self.handle_expr_context(ctx.rhs, local)
+        
+        if isinstance(ctx, stellaParser.DotRecordContext):
+            label = self.get_name_of_label(ctx)
+            record = self.handle_expr_context(ctx.expr_, local)
+            if not isinstance(record, Record):
+                raise RuntimeError(f'{ctx.expr_.getText()} is not record')
+            
+            return record[label]
+            
         if isinstance(ctx, stellaParser.LetContext):
             let_locals = [self.handle_expr_context(pattern, local) for pattern in ctx.patternBindings]
             for ll in let_locals:

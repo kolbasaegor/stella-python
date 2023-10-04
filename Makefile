@@ -38,4 +38,10 @@ test-sum-types:
 test-tuples:
 	python src/interpret.py tests/tuples/well-typed/tuples-1.stella
 
+test-records:
+	python src/interpret.py tests/records/well-typed/records-1.stella
 
+
+
+run:
+	python src/interpret.py tests/mytests/a.stella
