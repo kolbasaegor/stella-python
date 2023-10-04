@@ -17,6 +17,8 @@ antlr4-python3-runtime==4.9.2
 + References
 + Let-binding
 + Errors
++ Records
++ Subtyping (for records and functions)
 
 ## Usage
 

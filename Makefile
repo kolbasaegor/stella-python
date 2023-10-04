@@ -1,6 +1,6 @@
 all: test
 
-test: test-core test-exceptions test-let test-pairs test-references test-sequencing test-sum-types test-tuples
+test: test-core test-exceptions test-let test-pairs test-references test-sequencing test-sum-types test-tuples test-records test-subtyping
 
 test-core:
 	python src/interpret.py tests/core/well-typed/factorial.stella
@@ -40,6 +40,14 @@ test-tuples:
 
 test-records:
 	python src/interpret.py tests/records/well-typed/records-1.stella
+
+test-subtyping:
+	python src/interpret.py tests/subtyping/well-typed/subtyping-1.stella
+	python src/interpret.py tests/subtyping/well-typed/subtyping-2.stella
+	python src/interpret.py tests/subtyping/well-typed/subtyping-3.stella
+	python src/interpret.py tests/subtyping/well-typed/subtyping-4.stella
+	python src/interpret.py tests/subtyping/well-typed/subtyping-5.stella
+	python src/interpret.py tests/subtyping/well-typed/subtyping-6.stella
 
 
 

@@ -9,5 +9,5 @@ fn f(r : {x : Nat, y : Nat}) -> Nat {
 }
 
 fn main(n : Nat) -> Nat {
-  return f({x = n});
+  return f({x = n})
 }

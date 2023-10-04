@@ -94,10 +94,10 @@ class Ref():
         return f'&({str(self.type)})'
     
 
-def compare_types(expected, actual):
+def issametype(expected, actual):
     '''
     compares two types
-    if expected == actual return true
+    if expected == actual or actual <: expected returns true
     '''
     if isinstance(expected, Any) or isinstance(actual, Any):
         return True
@@ -109,29 +109,42 @@ def compare_types(expected, actual):
         return True
     
     if isinstance(expected, Ref):
-        return compare_types(expected.type, actual.type)
+        return issametype(expected.type, actual.type)
     
     if isinstance(expected, Record):
-        for key, value in expected.dict_.items():
-            if key not in actual.dict_:
-                return False
-            
-            if not compare_types(value, actual.dict_[key]):
-                return False
-            
-        return True
+        return issubtype(actual, expected)
     
     if isinstance(expected, Fun):
-        return (compare_types(expected.param_type, actual.param_type) and 
-                compare_types(expected.return_type, actual.return_type))
+        return issubtype(actual, expected)
     
     if isinstance(expected, Tuple):
         for term_expected, term_actual in zip(expected.terms, actual.terms):
-            if not compare_types(term_expected, term_actual):
+            if not issametype(term_expected, term_actual):
                 return False
             
         return True
     
     if isinstance(expected, Sum):
-        return (compare_types(expected.left, actual.left) and 
-                compare_types(expected.right, actual.right))
+        return (issametype(expected.left, actual.left) and 
+                issametype(expected.right, actual.right))
+    
+
+def issubtype(actual, expected):
+    '''
+    true if actual <: expected
+    '''
+    if isinstance(expected, Record):
+        for key, value in expected.dict_.items():
+            if key not in actual.dict_:
+                return False
+            
+            if not issametype(value, actual.dict_[key]):
+                return False
+            
+        return True
+
+    if isinstance(expected, Fun):
+        return (issubtype(expected.param_type, actual.param_type) and 
+                issubtype(actual.return_type, expected.return_type))
+
+    return issametype(expected, actual)

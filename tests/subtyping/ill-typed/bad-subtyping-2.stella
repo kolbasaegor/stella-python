@@ -13,5 +13,5 @@ fn g(k : fn({x : Nat}) -> Nat) -> Nat {
 }
 
 fn main(n : Nat) -> Nat {
-  return g(f);
+  return g(f)
 }

@@ -117,7 +117,7 @@ class Typecheker():
             local[param_name] = param_type
         
             actual_return_type = self.handle_expr_context(ctx.returnExpr, local)
-            if not compare_types(expected_return_type, actual_return_type):
+            if not issametype(expected_return_type, actual_return_type):
                 raise RuntimeError(f'Ill-typed function {func_name}: expected return type: {expected_return_type}, actual: {actual_return_type}')
 
         elif isinstance(ctx, stellaParser.DeclTypeAliasContext):
@@ -204,7 +204,7 @@ class Typecheker():
                 raise RuntimeError(f'Reference object has type {ref}, expected: &')
 
             value_type = self.handle_expr_context(ctx.rhs, local)
-            if not compare_types(ref.type, value_type):
+            if not issametype(ref.type, value_type):
                 raise RuntimeError(f'Ill-typed assignment: reference object points to type {ref.type}, but assignment value has type {value_type}')
 
             return TYPE_UNIT
@@ -229,7 +229,7 @@ class Typecheker():
             case1_type = self.handle_expr_context(ctx.cases[0], local)
             case2_type = self.handle_expr_context(ctx.cases[1], local)
 
-            if not compare_types(case1_type, case2_type):
+            if not issametype(case1_type, case2_type):
                 raise RuntimeError(f'Ill-typed mactch: type of case 1 ({case1_type}) != type of case 2 ({case2_type})')
 
             return case1_type 
@@ -280,20 +280,20 @@ class Typecheker():
 
         if isinstance(ctx, stellaParser.IfContext):
             condition_type = self.handle_expr_context(ctx.condition, local)
-            if not compare_types(TYPE_BOOL, condition_type):
+            if not issametype(TYPE_BOOL, condition_type):
                 raise RuntimeError(f'Ill-typed if statement: expected condition type: Bool, acttual condition type: {condition_type}')
 
             then_expr_type = self.handle_expr_context(ctx.thenExpr, local)
             else_expr_type = self.handle_expr_context(ctx.elseExpr, local)
 
-            if not compare_types(then_expr_type, else_expr_type):
+            if not issametype(then_expr_type, else_expr_type):
                 raise RuntimeError(f'Ill-typed if statement: thenExprType({then_expr_type}) != elseExprType({else_expr_type})')
             
             return then_expr_type
         
         if isinstance(ctx, stellaParser.SuccContext):
             param_type = self.handle_expr_context(ctx.n, local)
-            if not compare_types(TYPE_NAT, param_type):
+            if not issametype(TYPE_NAT, param_type):
                 raise RuntimeError(f'Ill-typed succ: expected param type: Nat, actual param type: {param_type}')
 
             return TYPE_NAT
@@ -309,13 +309,13 @@ class Typecheker():
 
         if isinstance(ctx, stellaParser.NatRecContext):
             n_type = self.handle_expr_context(ctx.n, local)
-            if not compare_types(TYPE_NAT, n_type):
+            if not issametype(TYPE_NAT, n_type):
                 raise RuntimeError(f'Ill-typed Nat::rec: n should have type Nat, actual type: {n_type}')
             
             initial_type = self.handle_expr_context(ctx.initial, local)
             step_type = self.handle_expr_context(ctx.step, local)
 
-            if not compare_types(Fun(TYPE_NAT, Fun(initial_type, initial_type)), step_type):
+            if not issametype(Fun(TYPE_NAT, Fun(initial_type, initial_type)), step_type):
                 raise RuntimeError(f'Ill-typed Nat::rec,\nz have type {initial_type};\ns has to be of type (fn(Nat)->(fn({initial_type})->{initial_type}))\nactual type of s: {step_type}')
 
             return initial_type
@@ -327,7 +327,7 @@ class Typecheker():
             if not isinstance(func, Fun):
                 raise RuntimeError(f'Applying non function')
             
-            if not compare_types(func.param_type, param_type):
+            if not issametype(func.param_type, param_type):
                 raise RuntimeError(f'Ill-typed application of function {ctx.fun.getText()}: expected param type: {func.param_type}, actual: {param_type}')
             
             return func.return_type
