@@ -8,7 +8,11 @@ from typecheker import Typecheker
 
 
 def main(argv):
-    input_stream = FileStream(argv[1])
+    if len(argv) > 1:
+        input_stream = FileStream(argv[1])
+    else:
+        input_stream = StdinStream()
+
     lexer = stellaLexer(input_stream)
     stream = CommonTokenStream(lexer)
     parser = stellaParser(stream)

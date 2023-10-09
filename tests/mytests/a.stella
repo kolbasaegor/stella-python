@@ -1,10 +1,17 @@
 language core;
-extend with #records;
+extend with #sum-types, #unit-type;
 
-fn rotate3(p : {x : Nat, y : Nat, z : Nat}) -> {a : Nat, b : Nat, c : Nat} {
-  return {a = p.z, b = p.y, c = p.x}
+fn test(first : Bool) -> Nat + Unit {
+  return
+    match inl(0) {
+      inl(x) => if first then inl(succ(0)) else inr(unit)
+    | inr(y) => if first then inl(succ(0)) else inr(unit)
+    }
 }
 
-fn main(x : Nat) -> {a : Nat, b : Nat, c : Nat} {
-  return rotate3({x = x, y = succ(x), z = succ(succ(x))})
+fn main(input : Bool) -> Nat {
+  return match test(input){
+      inl(n) => n
+    | inr(_) => 0
+  }
 }

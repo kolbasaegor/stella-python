@@ -70,6 +70,9 @@ class Typecheker():
             )
 
         if isinstance(ctx, stellaParser.TypeTupleContext):
+            if len(ctx.types) == 0:
+                return Record({})
+            
             return Tuple([self.handle_type(term) for term in ctx.types])
         
         if isinstance(ctx, stellaParser.TypeRecordContext):
@@ -222,7 +225,7 @@ class Typecheker():
             )
 
         if isinstance(ctx, stellaParser.MatchContext):
-            match_type = self.type_of_match(ctx, local)
+            match_type = self.handle_expr_context(ctx.expr(), local)
             local['inl_pattern'] = match_type.left
             local['inr_pattern'] = match_type.right
 
