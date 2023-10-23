@@ -96,7 +96,7 @@ class Ref():
 
 def issametype(expected, actual):
     '''
-    compares two types
+    compares two types.
     if expected == actual or actual <: expected returns true
     '''
     if isinstance(expected, Any) or isinstance(actual, Any):
